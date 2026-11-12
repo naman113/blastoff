@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Check what the launcher needs before it installs anything. Changes nothing.
 
-Prints one line per tool and exits 1 if a required one is missing.
+Prints one line per tool and exits 1 if a required one is missing. Python 3.9 or 3.10 passes
+with a 'later' note: only Sellbird (cold outbound) needs 3.11+.
 """
 import re
 import shutil
@@ -29,7 +30,7 @@ def version(cmd):
 
 
 def find_python():
-    """Sellbird needs Python 3.11+. Return (command, version) of the best one found."""
+    """Blastoff needs Python 3.9+, Sellbird 3.11+. Return (command, version) of the best one found."""
     best = None
     for name in ("python3.13", "python3.12", "python3.11", "python3", "python", "py"):
         path = shutil.which(name)
@@ -48,10 +49,13 @@ def main():
     py = find_python()
     if py and py[1] >= (3, 11, 0):
         rows.append(("ok", "Python", f"{py[0]} is {'.'.join(map(str, py[1]))}", ""))
+    elif py and py[1] >= (3, 9, 0):
+        rows.append(("later", "Python 3.11+", f"{py[0]} is {'.'.join(map(str, py[1]))} (enough for everything else)",
+                     "Only cold outbound (Sellbird) needs 3.11 or newer. Install it from python.org or your package manager before that stage."))
     else:
         ok = False
         found = f"found {'.'.join(map(str, py[1]))}" if py else "not found"
-        rows.append(("MISSING", "Python 3.11+", found, "Sellbird needs 3.11 or newer. Install it from python.org or your package manager."))
+        rows.append(("MISSING", "Python 3.9+", found, "Blastoff needs 3.9 or newer (3.11+ for Sellbird outbound). Install it from python.org or your package manager."))
 
     for name, cmd, need, why in (
         ("git", ["git", "--version"], None, "Needed to clone Sellbird."),

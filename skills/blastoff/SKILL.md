@@ -1,7 +1,7 @@
 ---
 name: blastoff
 description: Set up and run the digital go-to-market for a product from Claude Code. It starts by asking a few questions and builds a checklist tailored to the answers, then works through it - capability discovery from the code, a product brief, a website built and audited by skills to current search and AI search practice, LinkedIn and Instagram presence, cold outbound with Sellbird, and a Claude artifact hub that acts as a light CRM. It builds nothing new - it installs and calls existing open-source skills and tools, keeps a tracker, and writes a step-by-step guide for the parts only a person can do. Use this skill whenever the user wants to launch, market or sell a product or repo, set up their business online, "get customers", set up outbound, plan social posting, asks "what's next" on their launch, or says "sync the hub" - even if they name only one piece such as the website, an SEO or AI search audit, or the cold email.
-compatibility: Claude Code with a shell (VS Code extension or terminal). Needs git, Python 3.11+, Node.js 18+ and the claude CLI on PATH.
+compatibility: Claude Code with a shell (VS Code extension or terminal). Needs git, Python 3.9+ (3.11+ for Sellbird outbound), Node.js 18+ and the claude CLI on PATH.
 ---
 
 # Blastoff
@@ -57,7 +57,7 @@ workspace root.
 - `<skill-dir>` is the folder this SKILL.md was loaded from. If you were not told the path, it is
   `~/.claude/skills/blastoff` or `.claude/skills/blastoff` in the workspace; check which
   exists.
-- `<python>` is whichever of `python3`, `python` or `py` runs Python 3.8 or newer on this machine.
+- `<python>` is whichever of `python3`, `python` or `py` runs Python 3.9 or newer on this machine.
   Try them once and keep using the one that works.
 - Commands in this skill are written on one line so they work in bash, zsh and PowerShell alike.
   Sellbird's own command is `.venv/bin/sellbird` on macOS and Linux and `.venv\Scripts\sellbird`
