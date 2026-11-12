@@ -1,0 +1,341 @@
+{
+  "_comment": "Step ids must match the SETUP list in assets/hub.html (launchpad.py check verifies this). who: you = only the person can do it, cc = Claude Code does it. needs: steps that must be done first (ignored when not in the plan). if_any / unless_any: profile tags that put a step in or out of the plan. auto_done: a profile tag that means the person already has this.",
+  "stages": [
+    {
+      "id": "brief",
+      "title": "Product brief",
+      "why": "Every other step reads this one file. A vague brief makes everything built from it vague.",
+      "steps": [
+        {
+          "id": "brief.write",
+          "who": "cc",
+          "text": "Write the product brief",
+          "how": "Claude Code builds a capability list from your code (each capability traced to files and marked shipped, partial or stub, with the README used only as a cross-check), researches competitors and how buyers describe the problem, and drafts .agents/product-marketing.md with two or three positioning angles. Each line is marked as fact, found or guess. You answer at most five questions it cannot look up (who has paid or shown interest, real results, price, which angle, what may be named in public), then read the brief and correct it."
+        }
+      ]
+    },
+    {
+      "id": "accounts",
+      "title": "Accounts only you can create",
+      "why": "These need your identity, your card or a browser sign-in. Claude Code cannot and should not do them for you.",
+      "steps": [
+        {
+          "id": "acct.domain",
+          "who": "you",
+          "text": "Own the main domain for the product",
+          "how": "Buy it at any registrar if you do not have it. Keep the registrar login handy: you will add DNS records there in later steps. Tell Claude Code the domain when done.",
+          "if_any": [
+            "ch:site",
+            "ch:outbound"
+          ],
+          "auto_done": "have:domain"
+        },
+        {
+          "id": "acct.send_domain",
+          "who": "you",
+          "text": "Buy a second domain just for cold email",
+          "how": "Pick a close variant of the main domain (for example a different ending, or 'get' or 'try' in front of the name). Cold email goes out from this one so that a spam complaint never damages the main domain. Set it to redirect to the main site.",
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "acct.mailbox",
+          "who": "you",
+          "text": "Create a mailbox on the sending domain",
+          "how": "Sellbird works best with a Google Workspace mailbox; Microsoft 365 and any SMTP/IMAP mailbox also work. Create one real-looking address (a person's name, not 'sales@'). Send and receive a test message by hand before going further.",
+          "needs": [
+            "acct.send_domain"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "acct.dns",
+          "who": "you",
+          "text": "Add SPF, DKIM and DMARC records to the sending domain",
+          "how": "Your mailbox provider's admin console shows the exact three records to add at the registrar. Add them, wait for them to go live, then ask Claude Code to check them. It runs Sellbird's free checker and tells you what is missing.",
+          "cmd": "sellbird warmup",
+          "needs": [
+            "acct.mailbox"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "acct.warmup",
+          "who": "you",
+          "text": "Start mailbox warmup and let it run two weeks",
+          "how": "Sign up for a warmup service and connect the new mailbox. Sellbird's docs recommend TrulyInbox (that link is an affiliate link for Sellbird's maintainer); any warmup service does the same job. Do not send cold email from this mailbox until warmup has run at least 14 days. You can do every other step while you wait.",
+          "needs": [
+            "acct.dns"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "acct.verifier",
+          "who": "you",
+          "text": "Get an email verifier key",
+          "how": "Create a free account at Reoon, ZeroBounce or Hunter and copy the API key. Open tools/sellbird/.env in your editor and paste it on the matching line (REOON_API_KEY, ZEROBOUNCE_API_KEY or HUNTER_API_KEY). Paste it yourself: never paste keys into the chat. Without a verifier Sellbird marks every address a guess and sends nothing.",
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "acct.booking",
+          "who": "you",
+          "text": "Decide where the main button goes: a booking link or your sign-up page",
+          "how": "If you sell through a conversation, create one short meeting type (15 or 20 minutes) in any scheduling tool. If people sign up and pay by themselves, it is your sign-up page. Give Claude Code the address: it becomes the main button on the site and the link in everything else.",
+          "if_any": [
+            "ch:site",
+            "ch:outbound"
+          ],
+          "auto_done": "have:booking"
+        }
+      ]
+    },
+    {
+      "id": "site",
+      "title": "Website",
+      "why": "Anyone who hears about you checks the site next. It is also where search engines and AI answers learn what the product is.",
+      "steps": [
+        {
+          "id": "site.copy",
+          "who": "cc",
+          "text": "Plan and write the site from the brief",
+          "how": "Claude Code runs existing skills in order: site-architecture and copywriting to plan one page into site/plan.md, copywriting and offers to write site/copy.md with the AI search patterns from ai-seo built in (a plain statement of what the product is, answer-first passages, a short FAQ in buyers' words), and cro to review it. Every claim comes from the capability list built from your code. You approve the headline, the offer and the main button before anything is built.",
+          "needs": [
+            "brief.write"
+          ],
+          "if_any": [
+            "ch:site"
+          ],
+          "unless_any": [
+            "have:website"
+          ]
+        },
+        {
+          "id": "site.build",
+          "who": "cc",
+          "text": "Build the site with search and AI search basics built in",
+          "how": "Claude Code builds site/index.html from the approved words with the frontend-design skill, as one self-contained page, applying the seo, schema, accessibility and performance skills while building: structured data for the business, the product and the FAQ, crawler rules that keep search and answer engines in, a sitemap, share tags. A checker then refuses broken links, leftover placeholders, a missing booking button, structured data the page does not show, and any claim the code does not back. You get a private preview link.",
+          "needs": [
+            "site.copy"
+          ],
+          "if_any": [
+            "ch:site"
+          ],
+          "unless_any": [
+            "have:website"
+          ]
+        },
+        {
+          "id": "site.seo",
+          "who": "cc",
+          "text": "Audit the site: search, AI search, accessibility, speed",
+          "how": "A separate read-only agent audits the build with existing audit skills (web-quality-audit, seo, seo-audit, ai-seo, seo-geo, schema, accessibility, performance, core-web-vitals, best-practices, web-design-guidelines) and writes site/audit.md. Must-fix findings go back to the writer and the audit repeats until none are left. Lighthouse runs if Chrome is installed on your machine. You read the audit's summary and decide on the judgement calls.",
+          "needs": [
+            "site.build"
+          ],
+          "if_any": [
+            "ch:site"
+          ],
+          "unless_any": [
+            "have:website"
+          ]
+        },
+        {
+          "id": "site.deploy",
+          "who": "you",
+          "text": "Deploy the site and point the main domain at it",
+          "how": "Create a free account on a static host (Cloudflare Pages, Netlify or GitHub Pages), upload or connect the site/ folder, and follow the host's 'custom domain' steps to point the main domain at it. The site is one HTML file plus three small text files, so any host works. Claude Code can tell you which DNS records the host asks for, but the sign-in and the DNS change are yours. Tell Claude Code the live address when it loads. Anything in your plan that points people at the site waits for this.",
+          "needs": [
+            "site.seo",
+            "acct.domain"
+          ],
+          "if_any": [
+            "ch:site"
+          ],
+          "unless_any": [
+            "have:website"
+          ]
+        },
+        {
+          "id": "site.live",
+          "who": "cc",
+          "text": "Audit the live site",
+          "how": "Once the site answers on your domain, the auditor checks what only shows there: https and redirects, the sitemap and robots file being reachable, the canonical address, real load speed. If the site already existed before this launch, this is where it gets its first audit, and the findings are yours to fix or hand to whoever maintains it. If you want a deeper search audit of the live address, the claude-seo plugin does one; installing it is two commands you type in Claude Code. You can also paste the address into Google's Rich Results Test to see the structured data as Google reads it.",
+          "needs": [
+            "site.deploy"
+          ],
+          "if_any": [
+            "ch:site",
+            "ch:outbound"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "presence",
+      "title": "Social presence",
+      "why": "One scheduler posts everywhere, so Claude Code drafts and you approve in one place.",
+      "steps": [
+        {
+          "id": "soc.linkedin",
+          "who": "you",
+          "text": "Create the LinkedIn company page and update your profile",
+          "how": "Create the company page from your own LinkedIn account. Ask Claude Code for the page tagline, the About text and a rewritten personal headline: it writes them from the brief and you paste them in.",
+          "if_any": [
+            "ch:linkedin"
+          ]
+        },
+        {
+          "id": "soc.instagram",
+          "who": "you",
+          "text": "Create an Instagram business account",
+          "how": "Create the account, switch it to a professional (business) account in its settings, and link it to a Facebook page. Scheduling tools can only post to professional accounts. Skip this step if your buyers are not on Instagram.",
+          "if_any": [
+            "ch:instagram"
+          ]
+        },
+        {
+          "id": "soc.postiz",
+          "who": "you",
+          "text": "Create a Postiz account and connect each channel",
+          "how": "Sign up at postiz.com, then use its 'add channel' flow for LinkedIn (personal and page) and Instagram. Each platform makes you sign in and approve access, which is why this is your step. Then create an API key in Postiz's settings under Developers, Public API, and set it in your terminal as POSTIZ_API_KEY. Do not paste it into the chat.",
+          "if_any": [
+            "ch:social"
+          ]
+        },
+        {
+          "id": "soc.skill",
+          "who": "cc",
+          "text": "Connect Claude Code to Postiz and confirm it sees your channels",
+          "how": "Claude Code installs the Postiz skill and command-line tool, then lists your connected channels to prove the connection works.",
+          "cmd": "postiz integrations:list",
+          "needs": [
+            "soc.postiz"
+          ],
+          "if_any": [
+            "ch:social"
+          ]
+        },
+        {
+          "id": "soc.plan",
+          "who": "cc",
+          "text": "Draft two weeks of posts into the Content tab",
+          "how": "Claude Code uses the content-strategy and social skills to draft posts into .launchpad/posts.json. After the next sync they appear in the hub's Content tab. Nothing is scheduled until you say which ones to schedule.",
+          "needs": [
+            "brief.write"
+          ],
+          "if_any": [
+            "ch:social"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "outbound",
+      "title": "Outbound with Sellbird",
+      "why": "Sellbird finds companies, finds the decision-maker, writes and sends cold email from your mailbox, and drafts answers to replies.",
+      "steps": [
+        {
+          "id": "out.install",
+          "who": "cc",
+          "text": "Install Sellbird",
+          "how": "Claude Code clones Sellbird into tools/sellbird, creates its own Python environment there and installs it. Needs Python 3.11 or newer.",
+          "needs": [
+            "brief.write"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "out.train",
+          "who": "cc",
+          "text": "Train Sellbird on your site",
+          "how": "Sellbird learns your product by reading your live site, which is why outbound waits for the site, and writes its product knowledge. Claude Code then corrects it against the brief. This step uses your Claude plan's programmatic credit.",
+          "cmd": "sellbird train https://your-site.com",
+          "needs": [
+            "out.install",
+            "site.live"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "out.signals",
+          "who": "you",
+          "text": "Confirm which buying signals Sellbird looks for",
+          "how": "Claude Code shows you Sellbird's signal list and recommends which ones show that a company needs your product. You decide. Confirming is the one thing that lets Sellbird start collecting, so it stays your call.",
+          "needs": [
+            "out.train"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "out.mailbox",
+          "who": "you",
+          "text": "Connect the sending mailbox",
+          "how": "For Google Workspace: create an OAuth client in a Google Cloud project, put its id and secret in tools/sellbird/.env yourself, then run the command in your own terminal. It opens a browser for you to sign in as the sending mailbox. tools/sellbird/docs has the provider guides, including Microsoft 365.",
+          "cmd": "sellbird gmail auth",
+          "needs": [
+            "acct.mailbox",
+            "out.install"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "out.mcp",
+          "who": "cc",
+          "text": "Give Claude Code read access to Sellbird",
+          "how": "Sellbird registers its own connector with Claude Code. It shows the exact change first and applies it only when you say yes. Through it Claude Code can read your pipeline and pause sending. It cannot approve, send, spend or resume.",
+          "cmd": "sellbird mcp install claude",
+          "needs": [
+            "out.install"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "out.list",
+          "who": "you",
+          "text": "Read the first 30 prospects before any email exists",
+          "how": "Claude Code runs a free discovery with sending switched off and exports the list. Read 30 rows. If these are not people you would call, fix the brief or the signals and run it again. A wrong list cannot be rescued by good emails.",
+          "needs": [
+            "out.signals",
+            "acct.verifier"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        },
+        {
+          "id": "out.approve",
+          "who": "you",
+          "text": "Approve the first batch in Sellbird's Outbox",
+          "how": "Run 'sellbird dashboard' and 'sellbird run' in your own terminal, open the private link the dashboard prints, and approve or edit each email in the Outbox tab. Keep approval on for at least the first few batches. Only do this after warmup has run 14 days.",
+          "needs": [
+            "out.mailbox",
+            "acct.warmup",
+            "out.list"
+          ],
+          "if_any": [
+            "ch:outbound"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+schema_version: "1.1"
+name: audit-reports-without-fixing
+expected_outcome: |
+  The site is audited and site/audit.md is written in the skill's report shape. The audit lists
+  as must-fix that robots.txt blocks OAI-SearchBot and that the FAQ structured data contains a
+  question the page does not show. It does not recommend inventing statistics, reviews or
+  customer names. Nothing under site/ other than audit.md is changed.
+context:
+  scaffold_script: place-files.sh

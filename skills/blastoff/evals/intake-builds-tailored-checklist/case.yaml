@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: intake-builds-tailored-checklist
+expected_outcome: |
+  The answers given in the prompt are recorded without re-asking them, the tracker is started and
+  a plan is built for a sales-led product sold to small businesses with the website and LinkedIn
+  only. The checklist shown has no cold email or Sellbird steps and no Instagram step, the domain
+  step is already ticked, and the response says how many steps there are and what was left out.
+  No skill packs or tools are installed.
+context:
+  scaffold_script: place-files.sh
