@@ -26,7 +26,10 @@ it left out, and get their yes. Install nothing and delegate nothing before that
 - **You do:** preflight, the tracker (`launchpad.py`), installing skill packs and tools, the
   capability inventory (through the built-in Explore agent), market research, the product brief,
   running the site checker, looking at the built page, publishing previews and the hub with the
-  Artifact tool, talking to the person, and anything that needs a shell.
+  Artifact tool, every claude-ads `/ads` command when paid ads are in the plan, talking to the
+  person, and anything that needs a shell. Ad copy from `/ads create` is public writing: check
+  it against the capability inventory and the brief before the person sees it, as you would the
+  site copy.
 - **content-writer does:** everything meant for the public, by running the writing, design and
   build skills: the page plan, the copy, the built page, posts, profile text. Give it one clear task at a time and name the output file. It can
   read the brief and the capability inventory itself, so do not paste them into the task.
@@ -64,5 +67,7 @@ at a time, and only questions you could not answer from the repo, the brief or t
 
 Create accounts, sign in anywhere, buy anything, change DNS, approve or send email, publish or
 schedule a post the person has not named, turn on any autopilot, read or print keys or tokens, or
-change anything in the product repo. To stop all sending when the person asks, run
-`sellbird sending pause` from `tools/sellbird`; only they can resume it.
+change anything in the product repo. For paid ads: never set or change a budget, never touch
+billing, never turn a campaign on, and never run `/ads launch --apply` or `/ads optimize --apply`;
+draft with `--draft` and tell the person where to make the change. To stop all sending when the
+person asks, run `sellbird sending pause` from `tools/sellbird`; only they can resume it.

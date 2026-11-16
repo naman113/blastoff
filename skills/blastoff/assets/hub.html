@@ -246,6 +246,16 @@ const SETUP = [
     {id:"out.mcp", who:"cc", text:"Give Claude Code read access to Sellbird", cmd:"sellbird mcp install claude"},
     {id:"out.list", who:"you", text:"Read the first 30 prospects before any email exists", detail:"If the list is wrong, no email will save it. Fix the brief or the signals and run discovery again."},
     {id:"out.approve", who:"you", text:"Approve the first batch in Sellbird’s Outbox", detail:"Keep approval on for at least the first few batches."}
+  ]},
+  {id:"ads", title:"Paid ads", steps:[
+    {id:"ads.install", who:"cc", text:"Install claude-ads", detail:"Pinned to release v2.1.0. It installs for every project on this machine, so Claude Code checks for name clashes and asks you first."},
+    {id:"ads.setup", who:"cc", text:"Record your ads profile with /ads setup", detail:"You are the only approver. Claude Code has no authority to change an account.", cmd:"/ads setup"},
+    {id:"ads.audit", who:"cc", text:"Audit the ad accounts you already run", detail:"Read-only, on exports you provide. Nothing in the accounts changes.", cmd:"/ads audit all"},
+    {id:"ads.plan", who:"cc", text:"Plan the ads: platforms, competitors and a test budget", detail:"Claude Code recommends; you choose the platforms and the number.", cmd:"/ads plan"},
+    {id:"ads.accounts", who:"you", text:"Open the ad accounts, add billing and set up conversion tracking", detail:"Your name, your card, your sign-in. Never paste passwords or tokens into the chat."},
+    {id:"ads.landing", who:"cc", text:"Audit the landing page for ads", cmd:"/ads landing https://your-site.com"},
+    {id:"ads.creative", who:"cc", text:"Draft the ad copy and creative briefs", detail:"Every claim is checked against what your code does. You approve the copy.", cmd:"/ads create"},
+    {id:"ads.launch", who:"you", text:"Set the budget and turn the first campaign on", detail:"Claude Code drafts the launch plan; it never applies it. The budget and the start button are yours.", cmd:"/ads launch --draft"}
   ]}
 ];
 

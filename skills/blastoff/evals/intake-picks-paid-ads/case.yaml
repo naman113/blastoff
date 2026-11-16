@@ -1,0 +1,12 @@
+schema_version: "1.1"
+name: intake-picks-paid-ads
+expected_outcome: |
+  The answers given in the prompt are recorded without re-asking them, the tracker is started and
+  a plan is built for a self-serve product sold to small businesses with the website and paid ads,
+  noting that the person already runs ad accounts. The checklist has a Paid ads stage that
+  includes the audit of the existing accounts, keeps the ad accounts, the budget and turning
+  campaigns on as the person's steps, and has no cold email, Sellbird or social steps. The
+  response says how many steps there are and what was left out. Nothing is installed, and nothing
+  is written to the global ~/.claude.
+context:
+  scaffold_script: place-files.sh

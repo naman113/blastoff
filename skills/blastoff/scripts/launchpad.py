@@ -21,6 +21,8 @@ Run from the go-to-market workspace (the folder that holds .launchpad/).
   launchpad.py seal --verify [--allow PATTERN ...]
                                         list what changed since; exit 1 if anything outside the
                                         allowed patterns (or anything in the product repo) changed
+                                        (with paid ads in the plan it also looks for claude-ads in the
+                                        global ~/.claude, and for name clashes before it is installed)
   launchpad.py agents [--default|--no-default] [--force]
                                         install the four agents into .claude/agents/;
                                         --default makes launch-coordinator the session agent here
@@ -79,8 +81,8 @@ def every_step():
 
 MOTIONS = ["self-serve", "sales-led"]
 BUYERS = ["small", "large", "consumer"]
-CHANNELS = ["site", "linkedin", "instagram", "x", "outbound"]
-HAVES = ["domain", "website", "booking", "linkedin-page"]
+CHANNELS = ["site", "linkedin", "instagram", "x", "outbound", "ads"]
+HAVES = ["domain", "website", "booking", "linkedin-page", "ad-accounts"]
 SOCIAL = {"linkedin", "instagram", "x"}
 
 
@@ -99,6 +101,8 @@ def in_plan(step, tags):
     if tags is None:          # no intake yet: everything is in the plan
         return True
     if step.get("if_any") and not (set(step["if_any"]) & tags):
+        return False
+    if step.get("if_all") and not set(step["if_all"]) <= tags:
         return False
     if step.get("unless_any") and (set(step["unless_any"]) & tags):
         return False
@@ -147,7 +151,8 @@ def cmd_init(a):
         save(POSTS, [])
     ignore = Path.cwd() / ".gitignore"
     lines = ignore.read_text(encoding="utf-8").splitlines() if ignore.exists() else []
-    for entry in ("tools/", ".launchpad/hub-sync.json", ".launchpad/leads.json", ".launchpad/prospects.csv", ".launchpad/seal.json"):
+    for entry in ("tools/", ".launchpad/hub-sync.json", ".launchpad/leads.json", ".launchpad/prospects.csv", ".launchpad/seal.json",
+                  ".claude-ads/", "ads-exports/"):
         if entry not in lines:
             lines.append(entry)
     ignore.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -186,6 +191,13 @@ def cmd_profile(a):
     if "outbound" in ch and "site" not in ch and "website" not in have:
         ch.add("site")
         notes.append("The website was added: outbound needs a live site, because Sellbird learns the product from it and every prospect will visit it.")
+    if "ads" in ch and "site" not in ch and "website" not in have:
+        ch.add("site")
+        notes.append("The website was added: paid ads need a landing page to send every click to, and claude-ads audits that page before any money is spent.")
+    if "ads" in ch and pr["buyer"] == "large" and pr["motion"] == "sales-led":
+        notes.append("Paid ads are rarely the first channel for a sales-led product sold to larger companies: clicks are expensive and the buyer is a committee. They are planned and drafted here, but nothing spends until you set a budget and turn a campaign on yourself.")
+    if "ad-accounts" in have and "ads" not in ch:
+        notes.append("You have ad accounts but did not choose paid ads, so no ads steps were added. Add the ads channel if you want an audit of those accounts.")
     if "outbound" in ch and pr["buyer"] == "large":
         notes.append("Outbound is a weak fit for buyers inside larger companies: Sellbird finds owners named on small businesses' own sites. Expect to build the target list by hand and use Sellbird for writing and sending.")
     if "website" in have and "site" in ch:
@@ -323,7 +335,11 @@ def write_guide(st):
                 "- **To stop all sending at once:** `sellbird sending pause`, or ask Claude Code to pause Sellbird."]
     if chans & SOCIAL:
         out += ["- **Once a week:** ask Claude Code for next week's posts, review them in the hub's Content tab, and tell it which to schedule."]
-    if chans & {"site", "outbound"}:
+    if "ads" in chans:
+        out += ["- **Once a week, while ads run:** read the spend and results in each ad platform yourself, export them into ads-exports/, "
+                "and ask Claude Code for `/ads monitor` or a draft optimization (`/ads optimize --draft`). It writes suggestions only; "
+                "you decide, and you make any budget or campaign change in the platform yourself."]
+    if chans & {"site", "outbound", "ads"}:
         out += ["- **When the product changes:** tell Claude Code. It refreshes the capability list from your code and names any claim on the site that no longer holds."]
     out += ["- **When you want the hub current:** ask Claude Code to \"sync the hub\".",
             "- **When your situation changes:** tell Claude Code what changed and it rebuilds this checklist.", ""]
@@ -427,7 +443,56 @@ SKILLS_NEEDED = ["product-marketing", "competitor-profiling", "customer-research
                  "seo-audit", "ai-seo", "schema", "content-strategy", "social",
                  "web-quality-audit", "seo", "accessibility", "performance", "core-web-vitals",
                  "best-practices", "seo-geo", "web-design-guidelines"]
+# claude-ads installs globally (~/.claude/skills/ads*, ~/.claude/agents/), not into the workspace.
+# It is only expected when paid ads are in the plan.
+ADS_CHECKOUT = Path("tools") / "claude-ads"
+ADS_MANIFESTS = (".claude-ads-claude.manifest", ".claude-ads-claude.manifest.json")
 BRIEF_HEADINGS = ["Observable signals", "Motion", "Approved for public use"]
+
+
+def _plugin_ads(home):
+    """claude-ads installed as a Claude Code plugin instead (commands are then /claude-ads:ads)."""
+    cache = home / ".claude" / "plugins" / "cache"
+    if not cache.is_dir():
+        return None
+    for pattern in ("*/claude-ads/ads/SKILL.md", "*/claude-ads/*/ads/SKILL.md"):
+        hit = next(cache.glob(pattern), None)
+        if hit:
+            return hit
+    return None
+
+
+def ads_rows(cwd, home):
+    """Doctor rows for paid ads. claude-ads lives in the person's global ~/.claude, so look there."""
+    rows = []
+    skills, agents = home / ".claude" / "skills", home / ".claude" / "agents"
+    main = skills / "ads" / "SKILL.md"
+    plugin = _plugin_ads(home)
+    if main.exists():
+        venv = (skills / "ads" / ".venv").exists()
+        rows.append(("ok", "claude-ads", f"{main.parent} (global)" + ("" if venv else ", skills only"), ""))
+        if not venv:
+            rows.append(("later", "claude-ads Python", "installed with --no-deps",
+                         "the landing-page fetch and PDF reports need the managed environment (CPython 3.11 or 3.12); see references/stack.md"))
+    elif plugin:
+        rows.append(("ok", "claude-ads", f"installed as a plugin ({plugin.parent}); commands are /claude-ads:ads ...", ""))
+    else:
+        rows.append(("MISSING", "claude-ads", "not in ~/.claude/skills/ads",
+                     "Stage 6, step 1: install claude-ads v2.1.0 (references/stack.md). It installs globally, not into this folder"))
+        checkout = cwd / ADS_CHECKOUT
+        if (checkout / "agents").is_dir():
+            # A file the installer already owns (listed in its manifest) is an update, not a clash.
+            owned = any((skills / m).exists() for m in ADS_MANIFESTS)
+            names = ["ads"] + sorted(d.name for d in (checkout / "skills").glob("ads-*") if d.is_dir())
+            clash = [] if owned else sorted(
+                f.stem for f in (checkout / "agents").glob("*.md")
+                if (agents / f.name).exists() or (cwd / ".claude" / "agents" / f.name).exists())
+            if not owned:
+                clash += [f"skill {n}" for n in names if (skills / n).exists() or (cwd / ".claude" / "skills" / n).exists()]
+            rows.append(("ok" if not clash else "CLASH", "claude-ads names",
+                         "no clash with ~/.claude or this folder's .claude" if not clash else "already taken: " + ", ".join(clash),
+                         "" if not clash else "stop and show the person; the installer refuses files it does not own. They can move those, or use the plugin install instead"))
+    return rows
 
 
 def cmd_doctor(_a):
@@ -451,6 +516,8 @@ def cmd_doctor(_a):
                and not (home / ".claude" / "skills" / n / "SKILL.md").exists()]
     row(not missing, "Skill packs", f"{len(SKILLS_NEEDED) - len(missing)} of {len(SKILLS_NEEDED)} installed",
         "missing: " + ", ".join(missing) + ". See the install commands in references/stack.md")
+    if "ads" in chans:
+        rows.extend(ads_rows(cwd, home))
 
     agent_files = sorted((SKILL / "assets" / "agents").glob("*.md"))
     gone, stale = [], []
@@ -498,7 +565,7 @@ def cmd_doctor(_a):
             row(open_must == 0, "Site audit", "no must-fix findings" if open_must == 0 else f"{open_must} must-fix finding(s) open", "send them to content-writer, then re-audit")
         else:
             row(False, "Site audit", "not run", "Stage 3: site-auditor agent writes site/audit.md")
-    if chans & {"site", "outbound"}:
+    if chans & {"site", "outbound", "ads"}:
         row(bool(st.get("domain") or st.get("site")), "Site domain", st.get("domain") or st.get("site") or "not chosen", "launchpad.py set domain <address>  (needed for the sitemap and canonical link)")
         row(bool(st.get("booking_url")), "Booking link", st.get("booking_url") or "not set", "launchpad.py set booking_url <url>")
         row(bool(st.get("site")), "Live site address", st.get("site") or "not set", "after deploy: launchpad.py set site <url>")

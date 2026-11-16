@@ -1,8 +1,10 @@
 # The stack this skill calls
 
 Nothing here is bundled. Each item is someone else's project, installed from its own source at run
-time, so the person always gets the current version. Last verified: 2026-11-12. These projects move
-quickly: when a command fails, trust the tool's own `--help` and README over this file.
+time, so the person always gets the current version. The one exception is claude-ads, pinned to a
+release because it installs into the person's global `~/.claude`. Last verified: 2026-11-15.
+These projects move quickly: when a command fails, trust the tool's own `--help` and README over
+this file.
 
 ## Skill packs (markdown instructions for the agent)
 
@@ -75,6 +77,68 @@ quickly: when a command fails, trust the tool's own `--help` and README over thi
   `/plugin marketplace add AgriciDaniel/claude-seo` and
   `/plugin install claude-seo@agricidaniel-claude-seo` in Claude Code. Plugin skills are
   namespaced, so they do not collide.
+
+### AgriciDaniel/claude-ads (paid ads; installs globally, pinned)
+- **Source:** github.com/AgriciDaniel/claude-ads (MIT). Pinned to release **v2.1.0**
+  (2026-10-16). Never install the default branch: its own installer calls that "unpinned, not a
+  verified release".
+- **Status, in its own words:** a "development candidate". All twelve account health scoring
+  profiles are disabled, so audits report findings, unknowns and evidence coverage, never a
+  score. Do not report or estimate one.
+- **Used for:** Stage 6. `/ads setup` (profile; stores only references to where keys live),
+  `/ads plan` (twelve industry templates), `/ads competitor` (public ad libraries),
+  `/ads budget` and `/ads math`, `/ads landing` (the live landing page), `/ads create`
+  (concepts, copy, creative briefs), `/ads audit [all|platform]` on exports the person provides,
+  `/ads launch --draft`, `/ads monitor`, `/ads optimize --draft`, `/ads report`,
+  `/ads status` and `/ads next`. Runs write to `.claude-ads/runs/<run-id>/` in the workspace.
+- **Never used:** `--apply` on `/ads launch` or `/ads optimize`, and `/ads generate` or
+  `/ads photoshoot` unless the person asks (they need an image provider the person configures).
+  Blastoff never sets budgets, touches billing or turns campaigns on.
+- **How it differs from every other pack here:** it is not installed with `npx skills add` into
+  the workspace. Its own installer writes to the person's **global** `~/.claude`, for every
+  project on the machine:
+  - skills: `~/.claude/skills/ads` and `~/.claude/skills/ads-*` (33 folders),
+  - agents: 25 files in `~/.claude/agents/` with generic names (`audit-google`, `audit-meta`,
+    `copy-writer`, `creative-strategist`, `research-worker` and others),
+  - a managed Python environment: `~/.claude/skills/ads/.venv`, installed from a hash-locked
+    file with pip `--require-hashes --only-binary=:all:` (wheels only),
+  - an ownership manifest in `~/.claude/skills/` that lists every file it wrote. It refuses to
+    overwrite a file it does not own, and the bash and PowerShell installers keep separate
+    manifests, so uninstall with the same kind of script that installed it.
+- **Install, after the person says yes.** Clone the release into the workspace (`tools/` is
+  git-ignored), so the installer that runs and the files it installs are both v2.1.0:
+  ```
+  git clone --depth 1 --branch v2.1.0 https://github.com/AgriciDaniel/claude-ads.git tools/claude-ads
+  ```
+  Then check for name clashes: `launchpad.py doctor` compares the checkout's agent and skill
+  names with `~/.claude` and the workspace's `.claude/`, and prints CLASH with the names. On a
+  clash, stop and show the person. Otherwise run the installer from the checkout:
+  - macOS, Linux: `bash tools/claude-ads/install.sh --source=local`
+  - Windows: `powershell -NoProfile -File tools/claude-ads/install.ps1 -Source local`
+    (if the execution policy blocks it, that is the person's setting to change, not ours)
+
+  The documented alternative, `bash install.sh --source=git --ref=v2.1.0` (PowerShell:
+  `.\install.ps1 -Source git -Ref v2.1.0`), also installs the v2.1.0 files, but the installer
+  script running it is whatever copy you downloaded. Never use `--source=git` without `--ref`.
+  Restart Claude Code afterwards.
+- **Python:** the managed environment needs CPython **3.11 or 3.12** (3.13 is not in its lock
+  matrix), found as `python3` by `install.sh` and as `python` by `install.ps1`; Windows must be
+  amd64, Linux glibc 2.28 or later. Any other interpreter fails before anything is written.
+  `install.sh` does not manage Windows Python: on Windows use `install.ps1`.
+- **Fallback when Python does not fit:** add `--no-deps` (PowerShell: `-NoDeps`). The skills and
+  agents install without the Python environment; the guarded landing-page fetcher (needs
+  `requests`) and PDF reports do not work. `launchpad.py doctor` notes a skills-only install.
+- **Uninstall:** `bash tools/claude-ads/uninstall.sh --target=claude`, or
+  `powershell -NoProfile -File tools/claude-ads/uninstall.ps1 -Target claude`. It removes only
+  files listed in its ownership manifest and never globs `ads-*`.
+- **Plugin alternative, typed by the person:** `/plugin marketplace add agricidaniel/claude-ads`,
+  then `/plugin install claude-ads@ai-marketing-hub-claude-ads`. Plugin names are namespaced, so
+  nothing clashes, and commands become `/claude-ads:ads ...`. It follows the marketplace's
+  current version, not the v2.1.0 pin.
+- **Never:** `curl ... | bash` or `irm ... | iex`. claude-ads refuses those itself.
+- **Checked:** against the v2.1.0 installer and uninstaller source (`install.sh`, `install.ps1`,
+  `uninstall.sh`, `uninstall.ps1`), its README and `ads/SKILL.md`, on 2026-11-15. The installer
+  has not been run by this project, because it writes to the real `~/.claude`.
 
 ### vercel-labs/agent-skills
 - **Source:** github.com/vercel-labs/agent-skills
@@ -150,6 +214,7 @@ The skill never creates these. It tells the person what each is for and waits.
 | Static hosting | Cloudflare Pages, Netlify, GitHub Pages | Free tiers are enough for one page |
 | Booking link | any scheduler | Cal.com's open code now lives on as Cal.diy (MIT) if they want to self-host |
 | Social scheduler | Postiz | See above |
+| Ad accounts, billing and conversion tags | Google Ads, Meta Business (Facebook and Instagram), LinkedIn Campaign Manager, Microsoft Advertising, TikTok Ads Manager, Reddit Ads and others claude-ads covers | Only the platforms the ads plan picks. The person adds the payment method and sets every budget |
 
 ## If the person already has their own skills
 
@@ -165,4 +230,5 @@ Each layer has one contract with the rest:
 - **Brief:** anything that keeps `.agents/product-marketing.md` current.
 - **Scheduler:** anything that can post; update `.launchpad/posts.json` statuses.
 - **Outbound:** anything that yields replies; write them to `.launchpad/leads.json`.
+- **Paid ads:** anything that plans and drafts without changing an account; the person launches.
 - **Hub:** reads only `.launchpad/hub-sync.json`.

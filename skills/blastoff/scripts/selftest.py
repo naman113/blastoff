@@ -8,6 +8,7 @@ each. It installs nothing, touches no network and leaves nothing behind. It does
 Code, the skill packs, Sellbird or Postiz: those are checked by preflight.py and 'launchpad.py doctor'.
 """
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -30,8 +31,11 @@ SC = [sys.executable, str(HERE / "site_check.py")]
 results = []
 
 
-def run(cmd, cwd, expect=0):
-    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+def run(cmd, cwd, expect=0, home=None):
+    env = None
+    if home is not None:  # a throwaway home, so the person's real ~/.claude never affects a result
+        env = dict(os.environ, HOME=str(home), USERPROFILE=str(home))
+    p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=env)
     return p.returncode == expect, (p.stdout or "") + (p.stderr or "")
 
 
@@ -67,6 +71,48 @@ GOOD = """<!doctype html><html lang="en"><head><meta charset="utf-8">
     LD, "Recurring invoices for bookkeepers, sent on schedule. " * 40, "".join(f"<dt>{q}</dt><dd>{a}</dd>" for q, a in FAQ))
 
 
+def ads_tests(tmp):
+    """Paid ads: the stage, its gating, the landing-page rule, and a doctor that knows claude-ads is global."""
+    ws, home = tmp / "ads-ws", tmp / "ads-home"
+    ws.mkdir()
+    home.mkdir()
+    run(LP + ["init", "--product", "Ads Test"], ws)
+    ok, out = run(LP + ["profile", "--motion", "self-serve", "--buyer", "consumer", "--channels", "site", "ads", "--have", "domain"], ws)
+    guide = (ws / "LAUNCH_GUIDE.md").read_text(encoding="utf-8")
+    weekly = guide.split("## Running it week to week")[-1]
+    test("a plan with paid ads builds the ads stage, without the audit when there are no ad accounts",
+         ok and "Plan built: 15 steps" in out and "## 4. Paid ads" in guide and "/ads launch --draft" in guide
+         and "ads.install" in out and "ads.launch" in out and "ads.audit" not in out and "site.live" in out, out)
+    test("the weekly routine for ads drafts and leaves every change to the person",
+         "/ads monitor" in weekly and "/ads optimize --draft" in weekly and "--apply" not in weekly, weekly)
+    ok, out = run(LP + ["profile", "--have", "domain", "ad-accounts"], ws)
+    test("existing ad accounts add the audit step", ok and "Plan built: 16 steps" in out and "ads.audit" in out, out)
+    ok, out = run(LP + ["profile", "--channels", "ads", "--have"], ws)
+    st = json.loads((ws / ".launchpad" / "state.json").read_text(encoding="utf-8"))
+    test("profile adds the website when paid ads are chosen without one",
+         ok and "site" in st["profile"]["channels"] and "landing page" in out, out)
+
+    ok, out = run(LP + ["doctor"], ws, home=home)
+    test("doctor expects claude-ads in the global ~/.claude when ads are planned", ok and "MISSING" in out and "claude-ads" in out
+         and "not in ~/.claude/skills/ads" in out, out)
+    checkout = ws / "tools" / "claude-ads"
+    (checkout / "agents").mkdir(parents=True)
+    (checkout / "skills" / "ads-plan").mkdir(parents=True)
+    (checkout / "agents" / "copy-writer.md").write_text("x", encoding="utf-8")
+    (home / ".claude" / "agents").mkdir(parents=True)
+    (home / ".claude" / "agents" / "copy-writer.md").write_text("someone else's", encoding="utf-8")
+    ok, out = run(LP + ["doctor"], ws, home=home)
+    test("doctor names an agent that claude-ads' installer would clash with", ok and "CLASH" in out and "copy-writer" in out, out)
+    (home / ".claude" / "skills" / "ads").mkdir(parents=True)
+    (home / ".claude" / "skills" / "ads" / "SKILL.md").write_text("name: ads", encoding="utf-8")
+    ok, out = run(LP + ["doctor"], ws, home=home)
+    test("doctor finds claude-ads installed globally and notes a skills-only install",
+         ok and "(global), skills only" in out and "--no-deps" in out and "CLASH" not in out, out)
+    run(LP + ["profile", "--channels", "site", "linkedin"], ws)
+    ok, out = run(LP + ["doctor"], ws, home=tmp / "ads-empty-home")
+    test("doctor does not ask for claude-ads when ads are not in the plan", ok and "claude-ads" not in out, out)
+
+
 def main():
     skill_md = (HERE.parent / "SKILL.md").read_text(encoding="utf-8")
     desc = next((l[len("description:"):].strip() for l in skill_md.split("---")[1].splitlines() if l.startswith("description:")), "")
@@ -89,6 +135,8 @@ def main():
         guide = (ws / "LAUNCH_GUIDE.md").read_text(encoding="utf-8")
         test("profile builds a tailored plan and ticks what the person already has",
              ok and "Plan built: 12 steps" in out and "acct.domain" in st["done"] and "Sellbird" not in guide and "Not in your plan" in guide, out)
+        test("a plan without paid ads has no ads steps and no ads routine",
+             "ads." not in out and "Paid ads" not in guide and "/ads" not in guide, out)
         ok, out = run(LP + ["profile", "--buyer", "consumer", "--channels", "instagram", "outbound", "--have"], ws)
         st = json.loads((ws / ".launchpad" / "state.json").read_text(encoding="utf-8"))
         test("profile drops cold email for a consumer product, says why, and unticks what is no longer owned",
@@ -96,8 +144,8 @@ def main():
         ok, out = run(LP + ["profile", "--buyer", "small", "--channels", "outbound", "--have"], ws)
         st = json.loads((ws / ".launchpad" / "state.json").read_text(encoding="utf-8"))
         test("profile adds the website when cold email is chosen without one", ok and "site" in st["profile"]["channels"] and "website was added" in out, out)
-        ok, out = run(LP + ["profile", "--motion", "sales-led", "--buyer", "small", "--channels", "site", "linkedin", "instagram", "x", "outbound", "--have"], ws)
-        test("a full plan has every step", ok and "Plan built: 25 steps" in out, out)
+        ok, out = run(LP + ["profile", "--motion", "sales-led", "--buyer", "small", "--channels", "site", "linkedin", "instagram", "x", "outbound", "ads", "--have", "ad-accounts"], ws)
+        test("a full plan has every step", ok and "Plan built: 33 steps" in out and "0 left out" in out, out)
         ok, out = run(LP + ["done", "brief.write"], ws)
         test("done marks a step", ok and "brief.write" in json.loads((ws / ".launchpad" / "state.json").read_text(encoding="utf-8"))["done"], out)
         ok, out = run(LP + ["done", "no.such_step"], ws, expect=1)
@@ -109,7 +157,7 @@ def main():
         ok, out = run(LP + ["sync"], ws)
         sync = json.loads((ws / ".launchpad" / "hub-sync.json").read_text(encoding="utf-8")) if (ws / ".launchpad" / "hub-sync.json").exists() else {}
         test("sync builds the hub file, drops bad rows and carries the plan",
-             ok and len(sync.get("leads", [])) == 1 and "stage" not in sync["leads"][0] and len(sync.get("posts", [])) == 1 and len(sync.get("setup_active", [])) == 25, out)
+             ok and len(sync.get("leads", [])) == 1 and "stage" not in sync["leads"][0] and len(sync.get("posts", [])) == 1 and len(sync.get("setup_active", [])) == 33, out)
         export = ws / "hub-data.json"
         export.write_text(json.dumps({"setup_done": ["acct.domain", "bogus"], "leads": [], "posts": []}), encoding="utf-8")
         ok, out = run(LP + ["pull", str(export)], ws)
@@ -170,6 +218,8 @@ def main():
         (site / "index.html").write_text(GOOD + "<!-- quietly edited -->", encoding="utf-8")
         ok, out = run(LP + ["seal", "--verify", "--allow", "site/audit.md"], ws, expect=1)
         test("verify catches an agent editing a file it should not touch", ok and "UNEXPECTED" in out and "site/index.html" in out, out)
+
+        ads_tests(Path(tmp))
 
     passed = sum(results)
     print(f"\n{passed} of {len(results)} passed.")

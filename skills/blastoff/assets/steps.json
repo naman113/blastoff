@@ -1,5 +1,5 @@
 {
-  "_comment": "Step ids must match the SETUP list in assets/hub.html (launchpad.py check verifies this). who: you = only the person can do it, cc = Claude Code does it. needs: steps that must be done first (ignored when not in the plan). if_any / unless_any: profile tags that put a step in or out of the plan. auto_done: a profile tag that means the person already has this.",
+  "_comment": "Step ids must match the SETUP list in assets/hub.html (launchpad.py check verifies this). who: you = only the person can do it, cc = Claude Code does it. needs: steps that must be done first (ignored when not in the plan). if_any / if_all / unless_any: profile tags that put a step in the plan (any one of them / all of them) or take it out. auto_done: a profile tag that means the person already has this.",
   "stages": [
     {
       "id": "brief",
@@ -174,7 +174,8 @@
           ],
           "if_any": [
             "ch:site",
-            "ch:outbound"
+            "ch:outbound",
+            "ch:ads"
           ]
         }
       ]
@@ -333,6 +334,123 @@
           ],
           "if_any": [
             "ch:outbound"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ads",
+      "title": "Paid ads",
+      "why": "Paid ads are the one channel that spends money from the first click. Claude Code plans, checks and drafts with claude-ads; you open the accounts, set the budget and turn campaigns on.",
+      "steps": [
+        {
+          "id": "ads.install",
+          "who": "cc",
+          "text": "Install claude-ads",
+          "how": "Claude Code clones claude-ads at release v2.1.0 into tools/claude-ads, checks that none of its 25 agents or its skills would clash with names already in your Claude Code setup, and only then runs its own installer. Unlike the other packs it installs for every project on this machine: skills in ~/.claude/skills, agents in ~/.claude/agents and a Python environment that needs Python 3.11 or 3.12. You say yes before it runs. If your Python is older, it can install the skills only. Restart Claude Code afterwards.",
+          "needs": [
+            "brief.write"
+          ],
+          "if_any": [
+            "ch:ads"
+          ]
+        },
+        {
+          "id": "ads.setup",
+          "who": "cc",
+          "text": "Record your ads profile with /ads setup",
+          "how": "Claude Code fills claude-ads' profile from the brief: business model, offer, where you sell, the goal and the one conversion that counts. You give the numbers only you know: the price, the margin and the most you would spend in a month. You are recorded as the only person who approves changes, and Claude Code as having no authority to change an account. It stores at most the name of where a key lives, never a key.",
+          "cmd": "/ads setup",
+          "needs": [
+            "ads.install"
+          ],
+          "if_any": [
+            "ch:ads"
+          ]
+        },
+        {
+          "id": "ads.audit",
+          "who": "cc",
+          "text": "Audit the ad accounts you already run",
+          "how": "Export the last 30 to 90 days from each ad platform (CSV, JSON or screenshots, with the date range, currency and time zone) into the ads-exports folder yourself. Claude Code runs a read-only audit on those files and shows you what passed, what failed and what it could not check. It changes nothing in the accounts, and this release of claude-ads gives no overall health score, so none is reported.",
+          "cmd": "/ads audit all",
+          "needs": [
+            "ads.setup"
+          ],
+          "if_any": [
+            "ch:ads"
+          ],
+          "if_all": [
+            "ch:ads",
+            "have:ad-accounts"
+          ]
+        },
+        {
+          "id": "ads.plan",
+          "who": "cc",
+          "text": "Plan the ads: platforms, competitors and a test budget",
+          "how": "Claude Code runs /ads plan with the industry template closest to your product, /ads competitor on the public ad libraries, and /ads budget and /ads math to work out the most you can pay for a customer and what a first test would cost. It recommends which one or two platforms to start on and a test budget. You choose the platforms and the number.",
+          "cmd": "/ads plan",
+          "needs": [
+            "brief.write",
+            "ads.setup"
+          ],
+          "if_any": [
+            "ch:ads"
+          ]
+        },
+        {
+          "id": "ads.accounts",
+          "who": "you",
+          "text": "Open the ad accounts, add billing and set up conversion tracking",
+          "how": "On each platform you chose (Google Ads, Meta Business, LinkedIn Campaign Manager and so on) create or open the ad account in your own name, add your payment method, and create the conversion tag or pixel for the conversion in the plan. Adding the tag to the site is a page change: ask Claude Code and it goes through the writer and the checker like any other edit. If you already have accounts, check billing and tracking on them. Never paste passwords or API tokens into the chat.",
+          "needs": [
+            "ads.plan"
+          ],
+          "if_any": [
+            "ch:ads"
+          ]
+        },
+        {
+          "id": "ads.landing",
+          "who": "cc",
+          "text": "Audit the landing page for ads",
+          "how": "Claude Code runs /ads landing on your live site: whether the page matches what the ads promise, how it works on a phone, speed, trust, the form or sign-up, and tracking. Changes to the page go to the writer and the site checks run again, as with any site change.",
+          "cmd": "/ads landing https://your-site.com",
+          "needs": [
+            "site.live",
+            "ads.plan"
+          ],
+          "if_any": [
+            "ch:ads"
+          ]
+        },
+        {
+          "id": "ads.creative",
+          "who": "cc",
+          "text": "Draft the ad copy and creative briefs",
+          "how": "Claude Code runs /ads create for campaign concepts, ad copy and briefs for each image or video. Every claim is checked against the capability list from your code and the brief's approved names and numbers, exactly like the site copy. Nothing is generated with a paid image or video service unless you ask for it. You approve the copy.",
+          "cmd": "/ads create",
+          "needs": [
+            "ads.plan"
+          ],
+          "if_any": [
+            "ch:ads"
+          ]
+        },
+        {
+          "id": "ads.launch",
+          "who": "you",
+          "text": "Set the budget and turn the first campaign on",
+          "how": "Claude Code writes the launch plan with /ads launch --draft: campaign structure, targeting, the copy you approved, the budget you chose, tracking checks and how to undo it. It never runs --apply. You build the campaign in the platform from that plan, set the daily budget and press the button that starts it. Start small, and do not change anything for the first week unless something is broken.",
+          "cmd": "/ads launch --draft",
+          "needs": [
+            "ads.accounts",
+            "ads.landing",
+            "ads.creative"
+          ],
+          "if_any": [
+            "ch:ads"
           ]
         }
       ]
